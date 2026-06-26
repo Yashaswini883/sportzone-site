@@ -1,0 +1,4 @@
+# Never commit real Data Cloud credentials
+config.local.js
+.env
+.DS_Store

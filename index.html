@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SF Intelligence Layer — SportZone India</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f4f0; color: #1a1a18; font-size: 14px; }
+  .existing-site-header { background: #1a1a18; color: #fff; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .existing-site-header .logo { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; }
+  .existing-site-header nav a { color: #ccc; text-decoration: none; margin-left: 20px; font-size: 13px; }
+  .existing-site-header nav a:hover { color: #fff; }
+  .site-hero { background: #e8e6e0; padding: 32px 24px 24px; border-bottom: 1px solid #d5d3cc; display: flex; align-items: center; justify-content: space-between; }
+  .site-hero h1 { font-size: 22px; font-weight: 600; color: #1a1a18; margin-bottom: 6px; }
+  .site-hero p { font-size: 13px; color: #5f5e5a; }
+  .site-hero .hero-badge { background: #fff; border: 1px solid #d5d3cc; border-radius: 6px; padding: 6px 14px; font-size: 12px; color: #5f5e5a; }
+  .site-main { max-width: 1060px; margin: 0 auto; padding: 24px; }
+  .existing-product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
+  .existing-product-card { background: #fff; border: 1px solid #dddbd4; border-radius: 10px; padding: 16px; cursor: pointer; transition: border-color 0.15s, transform 0.1s; }
+  .existing-product-card:hover { border-color: #b0aea6; transform: translateY(-1px); }
+  .existing-product-card .prod-emoji { font-size: 28px; margin-bottom: 10px; display: block; }
+  .existing-product-card .prod-name { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+  .existing-product-card .prod-cat { font-size: 11px; color: #888780; margin-bottom: 8px; }
+  .existing-product-card .prod-price { font-size: 15px; font-weight: 600; color: #185FA5; }
+  .existing-product-card .btn-atc { width: 100%; margin-top: 10px; padding: 7px; font-size: 12px; font-weight: 500; background: #1a1a18; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+  .existing-product-card .btn-atc:hover { background: #333; }
+  #sf-reco-slot { margin-bottom: 24px; }
+  .sf-injected-label { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+  .sf-injected-label .badge { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 10px; background: #E6F1FB; color: #185FA5; letter-spacing: 0.04em; }
+  .sf-injected-label .title { font-size: 13px; font-weight: 600; color: #1a1a18; }
+  .sf-reco-strip { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+  .sf-reco-card { flex: 0 0 160px; background: #fff; border: 1.5px solid #B5D4F4; border-radius: 10px; padding: 12px; cursor: pointer; transition: border-color 0.15s; }
+  .sf-reco-card:hover { border-color: #378ADD; }
+  .sf-reco-card .emoji { font-size: 22px; margin-bottom: 6px; display: block; }
+  .sf-reco-card .name { font-size: 12px; font-weight: 600; margin-bottom: 2px; line-height: 1.3; }
+  .sf-reco-card .price { font-size: 12px; color: #185FA5; font-weight: 500; }
+  .sf-reco-card .reason { font-size: 10px; color: #5f5e5a; margin-top: 4px; line-height: 1.4; font-style: italic; }
+  #sf-agent-fab { position: fixed; bottom: 20px; right: 20px; z-index: 999; width: 52px; height: 52px; border-radius: 50%; background: #185FA5; color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 22px; transition: transform 0.15s, background 0.15s; box-shadow: 0 2px 10px rgba(24,95,165,0.3); }
+  #sf-agent-fab:hover { transform: scale(1.08); background: #0C447C; }
+  #sf-agent-panel { position: fixed; bottom: 82px; right: 20px; z-index: 998; width: 330px; background: #fff; border: 1px solid #d5d3cc; border-radius: 14px; display: none; flex-direction: column; max-height: 480px; overflow: hidden; }
+  #sf-agent-panel.open { display: flex; }
+  .agent-panel-header { padding: 14px 16px; border-bottom: 1px solid #eeecea; display: flex; align-items: center; justify-content: space-between; background: #fff; border-radius: 14px 14px 0 0; }
+  .agent-info { display: flex; align-items: center; gap: 10px; }
+  .agent-avatar { width: 32px; height: 32px; border-radius: 50%; background: #185FA5; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; }
+  .agent-name { font-size: 13px; font-weight: 600; color: #1a1a18; }
+  .agent-sub { font-size: 11px; color: #888780; }
+  .powered-by { font-size: 10px; color: #185FA5; font-weight: 500; letter-spacing: 0.04em; }
+  .agent-close { background: none; border: none; cursor: pointer; color: #888780; font-size: 18px; line-height: 1; padding: 0; }
+  .agent-close:hover { color: #1a1a18; }
+  .agent-messages { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; background: #f9f8f5; }
+  .msg { max-width: 86%; font-size: 13px; line-height: 1.5; padding: 8px 11px; border-radius: 10px; }
+  .msg-agent { background: #fff; color: #1a1a18; align-self: flex-start; border: 1px solid #eeecea; border-radius: 10px 10px 10px 2px; }
+  .msg-user { background: #185FA5; color: #fff; align-self: flex-end; border-radius: 10px 10px 2px 10px; }
+  .msg-typing { display: flex; gap: 4px; align-items: center; padding: 10px 12px; }
+  .msg-typing span { width: 6px; height: 6px; border-radius: 50%; background: #888780; animation: bounce 1.2s infinite; }
+  .msg-typing span:nth-child(2) { animation-delay: 0.2s; }
+  .msg-typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
+  .quick-pills-row { display: flex; gap: 5px; flex-wrap: wrap; padding: 8px 14px; background: #f9f8f5; border-top: 1px solid #eeecea; }
+  .quick-pill { padding: 3px 9px; font-size: 11px; border: 1px solid #d5d3cc; border-radius: 12px; cursor: pointer; background: #fff; color: #5f5e5a; transition: all 0.12s; white-space: nowrap; }
+  .quick-pill:hover { border-color: #185FA5; color: #185FA5; }
+  .agent-input-row { display: flex; gap: 6px; padding: 10px 14px; border-top: 1px solid #eeecea; background: #fff; }
+  .agent-input { flex: 1; padding: 7px 10px; font-size: 13px; border: 1px solid #d5d3cc; border-radius: 8px; background: #fff; color: #1a1a18; outline: none; transition: border-color 0.15s; }
+  .agent-input:focus { border-color: #185FA5; }
+  .agent-send { padding: 7px 14px; font-size: 12px; font-weight: 600; background: #185FA5; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+  .agent-send:hover { background: #0C447C; }
+  #sf-event-log { position: fixed; bottom: 20px; left: 20px; z-index: 997; width: 290px; background: #1a1a18; border-radius: 10px; padding: 12px 14px; font-family: "SF Mono","Fira Code",monospace; font-size: 11px; color: #9fe1cb; max-height: 220px; overflow: hidden; }
+  #sf-event-log .log-title { font-size: 10px; color: #5DCAA5; font-weight: 600; letter-spacing: 0.08em; margin-bottom: 8px; }
+  .log-line { color: #9fe1cb; margin-bottom: 4px; line-height: 1.5; opacity: 0.9; }
+  .log-line .log-type { color: #5DCAA5; font-weight: 600; }
+  .log-status-ok { color: #5DCAA5; }
+  .log-status-err { color: #E24B4A; }
+  .log-status-pending { color: #EF9F27; }
+  .sf-toast { position: fixed; top: 70px; right: 20px; z-index: 1000; background: #fff; border: 1px solid #B5D4F4; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #0C447C; transform: translateY(-8px); opacity: 0; transition: all 0.25s; pointer-events: none; }
+  .sf-toast.show { transform: translateY(0); opacity: 1; }
+  .sdk-banner { background: #E6F1FB; border-bottom: 1px solid #B5D4F4; padding: 8px 24px; font-size: 12px; color: #0C447C; display: flex; align-items: center; gap: 8px; }
+  .sdk-banner code { background: #B5D4F4; color: #042C53; padding: 1px 6px; border-radius: 4px; font-family: monospace; font-size: 11px; }
+  .dc-status { display: flex; align-items: center; gap: 5px; margin-left: auto; font-size: 11px; font-weight: 500; color: #0C447C; }
+  .dc-dot { width: 7px; height: 7px; border-radius: 50%; background: #EF9F27; }
+  .dc-dot.connected { background: #1D9E75; }
+  .dc-dot.error { background: #E24B4A; }
+</style>
+</head>
+<body>
+
+<div class="sdk-banner">
+  <strong>Live:</strong> Posting events to Data Cloud ingestion API
+  <span class="dc-status"><span class="dc-dot" id="dc-dot"></span><span id="dc-status-text">Connecting...</span></span>
+</div>
+
+<header class="existing-site-header">
+  <div class="logo">⚡ SportZone India</div>
+  <nav><a href="#">Shoes</a><a href="#">Wearables</a><a href="#">Gear</a><a href="#">Sale</a></nav>
+</header>
+
+<div class="site-hero">
+  <div>
+    <h1>Gear up for your best run</h1>
+    <p>Performance footwear &amp; fitness tech — free shipping over ₹2,000</p>
+  </div>
+  <span class="hero-badge">New Season Arrivals</span>
+</div>
+
+<div class="site-main">
+  <div id="sf-reco-slot"></div>
+  <div class="existing-product-grid" id="product-grid"></div>
+</div>
+
+<button id="sf-agent-fab" title="Open Shopper Agent" onclick="SFAgent.toggle()">💬</button>
+
+<div id="sf-agent-panel">
+  <div class="agent-panel-header">
+    <div class="agent-info">
+      <div class="agent-avatar">SF</div>
+      <div><div class="agent-name">Shopper Agent</div><div class="agent-sub">Agentforce · Data Cloud aware</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="powered-by">DATA CLOUD</span>
+      <button class="agent-close" onclick="SFAgent.close()">✕</button>
+    </div>
+  </div>
+  <div class="agent-messages" id="agent-messages"></div>
+  <div class="quick-pills-row">
+    <button class="quick-pill" onclick="SFAgent.send('Running shoes under 8000')">Under ₹8k</button>
+    <button class="quick-pill" onclick="SFAgent.send('Best for marathon training')">Marathon</button>
+    <button class="quick-pill" onclick="SFAgent.send('Fitness tracking wearable')">Tracker</button>
+    <button class="quick-pill" onclick="SFAgent.send('What have I been browsing?')">My activity</button>
+  </div>
+  <div class="agent-input-row">
+    <input class="agent-input" id="agent-input" type="text" placeholder="Ask me anything..." onkeydown="if(event.key==='Enter') SFAgent.send()" />
+    <button class="agent-send" onclick="SFAgent.send()">Send</button>
+  </div>
+</div>
+
+<div id="sf-event-log">
+  <div class="log-title">▸ DATA CLOUD EVENTS — LIVE</div>
+  <div id="log-lines"></div>
+</div>
+
+<div class="sf-toast" id="sf-toast"></div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
