@@ -1,5 +1,8 @@
 /* ══════════════════════════════════════════════
    IDENTITY HELPERS
+   (kept for the on-page demo log only — the real
+   Data Cloud identity resolution is now handled by
+   the beacon script tag in index.html)
    ══════════════════════════════════════════════ */
 function uuid() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
@@ -21,79 +24,6 @@ function getSessionId() {
 const SESSION_ID    = getSessionId();
 const COOKIE_ID     = getCookieId();
 const USER_ID       = 'user_' + COOKIE_ID.slice(-8);
-const SESSION_START = new Date().toISOString();
-
-/* ══════════════════════════════════════════════
-   OAUTH TOKEN MANAGER
-   ══════════════════════════════════════════════ */
-const TokenManager = (() => {
-  let _token = null;
-  let _expiry = 0;
-
-  async function getToken() {
-    if (_token && Date.now() < _expiry) return _token;
-    try {
-      const body = new URLSearchParams({
-        grant_type    : 'client_credentials',
-        client_id     : DC_CONFIG.clientId,
-        client_secret : DC_CONFIG.clientSecret
-      });
-      const res = await fetch(DC_CONFIG.loginUrl + '/services/oauth2/token', {
-        method  : 'POST',
-        headers : { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body    : body.toString()
-      });
-      if (!res.ok) throw new Error('Token ' + res.status);
-      const d = await res.json();
-      _token  = d.access_token;
-      _expiry = Date.now() + ((d.expires_in || 3600) * 1000) - 60000;
-      _setStatus(true);
-      return _token;
-    } catch(e) {
-      console.error('OAuth error:', e);
-      _setStatus(false);
-      return null;
-    }
-  }
-
-  function _setStatus(ok) {
-    const dot  = document.getElementById('dc-dot');
-    const txt  = document.getElementById('dc-status-text');
-    if (dot) dot.className = 'dc-dot ' + (ok ? 'connected' : 'error');
-    if (txt) txt.textContent = ok ? 'Connected to Data Cloud' : 'Auth failed — check credentials';
-  }
-
-  return { getToken };
-})();
-
-/* ══════════════════════════════════════════════
-   INGESTION API
-   ══════════════════════════════════════════════ */
-const IngestionAPI = (() => {
-  function endpoint(stream) {
-    return DC_CONFIG.tenantEndpoint + '/api/v1/ingest/sources/' + DC_CONFIG.connectorName + '/' + stream;
-  }
-
-  async function post(stream, record) {
-    const token = await TokenManager.getToken();
-    if (!token) return false;
-    try {
-      const res = await fetch(endpoint(stream), {
-        method  : 'POST',
-        headers : { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-        body    : JSON.stringify({ data: [record] })
-      });
-      const ok = res.status === 202;
-      console.log((ok ? 'DC OK' : 'DC ERR') + ' [' + stream + ']', record);
-      return ok;
-    } catch(e) {
-      console.error('DC network error:', e);
-      return false;
-    }
-  }
-
-  return { post };
-})();
 
 /* ══════════════════════════════════════════════
    PRODUCT CATALOG
@@ -114,89 +44,21 @@ const CATALOG = [
 ];
 
 /* ══════════════════════════════════════════════
-   DATA CLOUD EVENT TRACKER
+   ON-SCREEN ACTIVITY TRACKER
+   This drives the recommendations, the chatbot, and
+   the little "live event" panel in the corner.
+   It does NOT call any external API — the real
+   Data Cloud event capture now happens automatically
+   via the beacon script tag (no secrets needed).
    ══════════════════════════════════════════════ */
 const DataCloud = (() => {
   const profile = { categoryClicks:{}, browsedIds:[], cart:[] };
   const MAX_LOG = 7;
 
-  async function send(eventType, payload) {
+  function send(eventType, payload) {
     _updateProfile(eventType, payload);
     Personalization.refresh();
-    _log(eventType, payload, 'pending');
-
-    let stream = null;
-    let record = null;
-
-    if (eventType === 'PRODUCT_VIEW' || eventType === 'PRODUCT_CLICK' || eventType === 'SEARCH_QUERY') {
-      stream = DC_CONFIG.streams.browse;
-      record = {
-        ssot__Id__c                       : uuid(),
-        ssot__EngagementDateTm__c         : new Date().toISOString(),
-        ssot__SessionId__c                : SESSION_ID,
-        ssot__IndividualId__c             : USER_ID,
-        ssot__WebCookieId__c              : COOKIE_ID,
-        ssot__ProductId__c                : String(payload.id   || ''),
-        ssot__Name__c                     : payload.name         || '',
-        ssot__ProductCategoryName__c      : payload.category     || '',
-        ssot__ProductPriceAmount__c       : payload.price        || 0,
-        ssot__ProductBrandName__c         : payload.brand        || '',
-        ssot__ProductViewURL__c           : 'https://sportzone.demo/products/' + payload.id,
-        ssot__KeywordSearch__c            : payload.query        || '',
-        ssot__EngagementChannelActionId__c: eventType
-      };
-    }
-    else if (eventType === 'ADD_TO_CART' || eventType === 'REMOVE_FROM_CART') {
-      stream = DC_CONFIG.streams.cart;
-      const cartTotal = profile.cart.reduce((s, p) => s + p.price, 0);
-      record = {
-        ssot__Id__c                          : uuid(),
-        ssot__ShoppingCartEngagementId__c    : SESSION_ID,
-        ssot__ProductId__c                   : String(payload.id   || ''),
-        ssot__ShoppingCartProductItemName__c : payload.name         || '',
-        ssot__ProductCategoryName__c         : payload.category     || '',
-        ssot__ProductPrice__c                : payload.price        || 0,
-        ssot__ProductBrandName__c            : payload.brand        || '',
-        ssot__ProductQuantity__c             : 1,
-        ssot__AdjustedTotalProductAmount__c  : cartTotal,
-        ssot__ProductViewURL__c              : 'https://sportzone.demo/products/' + payload.id,
-        ssot__EngagementChannelActionId__c   : eventType
-      };
-    }
-    else if (eventType === 'PAGE_VIEW') {
-      stream = DC_CONFIG.streams.session;
-      record = {
-        ssot__Id__c                       : uuid(),
-        ssot__EngagementDateTm__c         : new Date().toISOString(),
-        ssot__SessionId__c                : SESSION_ID,
-        ssot__WebSessionId__c             : SESSION_ID,
-        ssot__IndividualId__c             : USER_ID,
-        ssot__WebCookieId__c              : COOKIE_ID,
-        ssot__PageURL__c                  : payload.pageUrl  || window.location.href,
-        ssot__PageName__c                 : payload.pageName || 'SportZone Home',
-        ssot__WebpageType__c              : payload.pageType || 'home',
-        ssot__VisitStartTm__c             : SESSION_START,
-        ssot__VisitEndTm__c               : new Date().toISOString(),
-        ssot__ReferrerURL__c              : document.referrer || '',
-        ssot__DeviceTypeTxt__c            : /Mobi/.test(navigator.userAgent) ? 'mobile' : 'desktop',
-        ssot__BrowserName__c              : navigator.userAgent.includes('Chrome')  ? 'Chrome'  :
-                                            navigator.userAgent.includes('Firefox') ? 'Firefox' :
-                                            navigator.userAgent.includes('Safari')  ? 'Safari'  : 'Other',
-        ssot__DomainName__c               : 'sportzone.demo',
-        ssot__WebsiteCatalogCategoryId__c : payload.categoryId || '',
-        ssot__WebsiteCatalogObjectId__c   : payload.productId  || '',
-        ssot__WebsiteCatalogObjectType__c : payload.objectType || 'Page',
-        ssot__IsPageView__c               : 'true',
-        ssot__EngmtChannelActionStatus__c : 'Success'
-      };
-    }
-    else {
-      _log(eventType, payload, 'ok', true);
-      return;
-    }
-
-    const ok = await IngestionAPI.post(stream, record);
-    _log(eventType, payload, ok ? 'ok' : 'err', true);
+    _log(eventType, payload);
   }
 
   function _updateProfile(eventType, payload) {
@@ -213,20 +75,13 @@ const DataCloud = (() => {
     }
   }
 
-  function _log(eventType, payload, status, replace) {
+  function _log(eventType, payload) {
     const el = document.getElementById('log-lines');
     if (!el) return;
     const label = payload.name || payload.category || payload.query || payload.message || payload.pageName || '';
-    const s = status === 'ok'      ? '<span class="log-status-ok"> ✓</span>'
-            : status === 'err'     ? '<span class="log-status-err"> ✗</span>'
-            :                        '<span class="log-status-pending"> ⟳</span>';
-    if (replace && el.firstChild) {
-      const sp = el.firstChild.querySelector('.log-status-ok,.log-status-err,.log-status-pending');
-      if (sp) { sp.outerHTML = s; return; }
-    }
     const line = document.createElement('div');
     line.className = 'log-line';
-    line.innerHTML = '<span class="log-type">' + eventType + '</span> · ' + label + s;
+    line.innerHTML = '<span class="log-type">' + eventType + '</span> · ' + label + '<span class="log-status-ok"> ✓</span>';
     el.insertBefore(line, el.firstChild);
     while (el.children.length > MAX_LOG) el.removeChild(el.lastChild);
   }
@@ -364,9 +219,13 @@ function showToast(msg) {
 // Boot
 renderProductGrid();
 Personalization.refresh();
-TokenManager.getToken();
 
-DataCloud.send('PAGE_VIEW', {
-  pageUrl: window.location.href, pageName: 'SportZone Home',
-  pageType: 'home', objectType: 'Page'
-});
+// Mark the status banner as connected (the real connection is now the beacon script)
+(function() {
+  const dot = document.getElementById('dc-dot');
+  const txt = document.getElementById('dc-status-text');
+  if (dot) dot.className = 'dc-dot connected';
+  if (txt) txt.textContent = 'Connected to Data Cloud';
+})();
+
+DataCloud.send('PAGE_VIEW', { pageName: 'SportZone Home' });
