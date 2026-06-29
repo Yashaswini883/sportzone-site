@@ -1,29 +1,82 @@
 /* ══════════════════════════════════════════════
-   IDENTITY HELPERS
-   (kept for the on-page demo log only — the real
-   Data Cloud identity resolution is now handled by
-   the beacon script tag in index.html)
+   NOTE ON CREDENTIALS
+   ══════════════════════════════════════════════
+   No client ID, client secret, or OAuth token belongs here. The
+   Salesforce Interactions Web SDK (loaded via the <script> tag in
+   <head>, scoped to connector "SportZone_Website") authenticates and
+   batches/delivers events on its own. There is no server-side proxy
+   to call either — that pattern (server.js + /api/token) is only
+   needed if you're using the raw Ingestion API, which this page no
+   longer does. */
+
+/* ══════════════════════════════════════════════
+   CONSENT
+   The Web SDK will not collect or send ANY data until it receives an
+   Opt In consent decision. We default this demo to Opt In so the
+   live event log has something to show, but the toggle in the banner
+   calls the real updateConsents() API so you can see opt-out behavior
+   too — flip it and watch the event log go quiet.
    ══════════════════════════════════════════════ */
-function uuid() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0;
-    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-  });
-}
-function getCookieId() {
-  let id = localStorage.getItem('sz_cookie');
-  if (!id) { id = 'cookie_' + uuid(); localStorage.setItem('sz_cookie', id); }
-  return id;
-}
-function getSessionId() {
-  let id = sessionStorage.getItem('sz_session');
-  if (!id) { id = 'sess_' + uuid(); sessionStorage.setItem('sz_session', id); }
-  return id;
+const CONSENT_PROVIDER = 'SportZone_ConsentBanner';
+
+function buildConsent(optedIn) {
+  return [{
+    provider : CONSENT_PROVIDER,
+    purpose  : SalesforceInteractions.ConsentPurpose.Tracking,
+    status   : optedIn ? SalesforceInteractions.ConsentStatus.OptIn
+                        : SalesforceInteractions.ConsentStatus.OptOut
+  }];
 }
 
-const SESSION_ID    = getSessionId();
-const COOKIE_ID     = getCookieId();
-const USER_ID       = 'user_' + COOKIE_ID.slice(-8);
+const ConsentUI = (() => {
+  let optedIn = true;
+  function toggle() {
+    optedIn = !optedIn;
+    SalesforceInteractions.updateConsents(buildConsent(optedIn));
+    const btn = document.getElementById('consent-toggle');
+    btn.textContent = 'Tracking: ' + (optedIn ? 'Opt-In' : 'Opt-Out');
+    btn.classList.toggle('opted-out', !optedIn);
+  }
+  return { toggle };
+})();
+
+/* ══════════════════════════════════════════════
+   SDK STATUS + EVENT LIFECYCLE HOOKS
+   These are real SalesforceInteractions CustomEvents, not simulated —
+   they fire from inside the SDK itself.
+   ══════════════════════════════════════════════ */
+function _setStatus(ok, label) {
+  const dot = document.getElementById('dc-dot');
+  const txt = document.getElementById('dc-status-text');
+  if (dot) dot.className = 'dc-dot ' + (ok ? 'connected' : 'error');
+  if (txt) txt.textContent = label;
+}
+
+document.addEventListener('salesforce:OnInit', () => {
+  _setStatus(true, 'Connected — Web SDK initialized');
+});
+document.addEventListener('salesforce:OnError', (e) => {
+  console.error('SalesforceInteractions error:', e.detail);
+  _setStatus(false, 'SDK error — check console');
+});
+document.addEventListener('salesforce:OnConsentRevoke', () => {
+  _setStatus(true, 'Opted out — tracking paused');
+});
+
+/* ══════════════════════════════════════════════
+   INITIALIZE THE SDK
+   init() resolves once consent is recorded; only then is it safe to
+   call sendEvent(). We boot the rest of the page from inside .then().
+   ══════════════════════════════════════════════ */
+SalesforceInteractions.init({
+  consents: buildConsent(true)
+}).then(() => {
+  SalesforceInteractions.setLoggingLevel('debug'); // verbose console output for this demo; drop to 'error' or 'none' in production
+  boot();
+}).catch((err) => {
+  console.error('SalesforceInteractions.init failed:', err);
+  _setStatus(false, 'SDK failed to initialize');
+});
 
 /* ══════════════════════════════════════════════
    PRODUCT CATALOG
@@ -44,12 +97,8 @@ const CATALOG = [
 ];
 
 /* ══════════════════════════════════════════════
-   ON-SCREEN ACTIVITY TRACKER
-   This drives the recommendations, the chatbot, and
-   the little "live event" panel in the corner.
-   It does NOT call any external API — the real
-   Data Cloud event capture now happens automatically
-   via the beacon script tag (no secrets needed).
+   DATA CLOUD EVENT TRACKER
+   Routes each event to the correct DMO stream
    ══════════════════════════════════════════════ */
 const DataCloud = (() => {
   const profile = { categoryClicks:{}, browsedIds:[], cart:[] };
@@ -58,7 +107,78 @@ const DataCloud = (() => {
   function send(eventType, payload) {
     _updateProfile(eventType, payload);
     Personalization.refresh();
-    _log(eventType, payload);
+
+    if (eventType === 'PRODUCT_VIEW' || eventType === 'PRODUCT_CLICK') {
+      // Standard Catalog Interaction -> lands in the Catalog DLO/DMO.
+      // ViewCatalogObject = browsing the grid, ViewCatalogObjectDetail = drilling into a recommended item.
+      SalesforceInteractions.sendEvent({
+        interaction: {
+          name: eventType === 'PRODUCT_CLICK'
+            ? SalesforceInteractions.CatalogObjectInteractionName.ViewCatalogObjectDetail
+            : SalesforceInteractions.CatalogObjectInteractionName.ViewCatalogObject,
+          catalogObject: {
+            id: String(payload.id || ''),
+            type: 'Product',
+            attributes: {
+              name: payload.name || '',
+              category: payload.category || '',
+              price: payload.price || 0,
+              brand: payload.brand || ''
+            }
+          }
+        }
+      });
+    }
+    else if (eventType === 'ADD_TO_CART' || eventType === 'REMOVE_FROM_CART') {
+      // Standard Cart Interaction -> lands in the Cart / Cart Item DLOs/DMOs.
+      SalesforceInteractions.sendEvent({
+        interaction: {
+          name: eventType === 'ADD_TO_CART'
+            ? SalesforceInteractions.CartInteractionName.AddToCart
+            : SalesforceInteractions.CartInteractionName.RemoveFromCart,
+          lineItem: {
+            catalogObjectType: 'Product',
+            catalogObjectId: String(payload.id || ''),
+            quantity: 1,
+            price: payload.price || 0,
+            currency: 'INR',
+            attributes: {
+              name: payload.name || '',
+              category: payload.category || '',
+              brand: payload.brand || ''
+            }
+          }
+        }
+      });
+    }
+    else if (eventType === 'PAGE_VIEW') {
+      // No sitemap pageTypes are configured on this demo page, so we dispatch a
+      // custom interaction directly. eventType must be a valid identifier (no
+      // spaces) so we set it explicitly — "name" stays human-readable for the
+      // console/log, "eventType" is what actually becomes the DLO field.
+      SalesforceInteractions.sendEvent({
+        interaction: {
+          name: 'View Page',
+          eventType: 'viewPage',
+          pageUrl: payload.pageUrl || window.location.href,
+          pageName: payload.pageName || 'SportZone Home',
+          pageType: payload.pageType || 'home',
+          referrerUrl: document.referrer || ''
+        }
+      });
+    }
+    else {
+      // AGENT_QUERY and anything else — sent as a lightweight custom interaction.
+      SalesforceInteractions.sendEvent({
+        interaction: {
+          name: 'Agent Query',
+          eventType: 'agentQuery',
+          message: payload.message || ''
+        }
+      });
+    }
+
+    _log(eventType, payload, 'ok', false);
   }
 
   function _updateProfile(eventType, payload) {
@@ -73,20 +193,165 @@ const DataCloud = (() => {
     if (eventType === 'REMOVE_FROM_CART') {
       profile.cart = profile.cart.filter(p => p.id !== payload.id);
     }
+    if (eventType === 'ADD_TO_CART' || eventType === 'REMOVE_FROM_CART') {
+      const badge = document.getElementById('cart-badge');
+      if (badge) badge.textContent = profile.cart.length;
+    }
   }
 
-  function _log(eventType, payload) {
+  function _log(eventType, payload, status, replace) {
     const el = document.getElementById('log-lines');
     if (!el) return;
-    const label = payload.name || payload.category || payload.query || payload.message || payload.pageName || '';
+    const label = payload.name || payload.category || payload.query || payload.message || payload.pageName || payload.email || '';
+    const s = status === 'ok'      ? '<span class="log-status-ok"> ✓</span>'
+            : status === 'err'     ? '<span class="log-status-err"> ✗</span>'
+            :                        '<span class="log-status-pending"> ⟳</span>';
+    if (replace && el.firstChild) {
+      const sp = el.firstChild.querySelector('.log-status-ok,.log-status-err,.log-status-pending');
+      if (sp) { sp.outerHTML = s; return; }
+    }
     const line = document.createElement('div');
     line.className = 'log-line';
-    line.innerHTML = '<span class="log-type">' + eventType + '</span> · ' + label + '<span class="log-status-ok"> ✓</span>';
+    line.innerHTML = '<span class="log-type">' + eventType + '</span> · ' + label + s;
     el.insertBefore(line, el.firstChild);
     while (el.children.length > MAX_LOG) el.removeChild(el.lastChild);
   }
 
-  return { send, profile };
+  return { send, profile, _log };
+})();
+
+/* ══════════════════════════════════════════════
+   SHOPPER IDENTITY
+   Demonstrates the Profile-category events: Identity,
+   Contact Point Email, and Party Identification. These are
+   what let Identity Resolution stitch the anonymous deviceId
+   that's been browsing to a real, known shopper.
+   ══════════════════════════════════════════════ */
+const ShopperIdentity = (() => {
+  let known = null;
+
+  function open()  { document.getElementById('signin-overlay').classList.add('open'); }
+  function close() { document.getElementById('signin-overlay').classList.remove('open'); }
+
+  function submit() {
+    const firstName = document.getElementById('si-first').value.trim() || 'Guest';
+    const lastName  = document.getElementById('si-last').value.trim();
+    const email     = document.getElementById('si-email').value.trim();
+    const loyalty   = document.getElementById('si-loyalty').value.trim() ||
+                       ('SZ' + Math.floor(Math.random() * 900000 + 100000));
+
+    if (!email) { alert('Email is required to sign in.'); return; }
+
+    // 1. Identity profile event
+    SalesforceInteractions.sendEvent({
+      user: { attributes: { eventType: 'identity', firstName, lastName } }
+    });
+    // 2. Contact Point Email profile event
+    SalesforceInteractions.sendEvent({
+      user: { attributes: { eventType: 'contactPointEmail', email } }
+    });
+    // 3. Party Identification profile event — the deterministic anchor for Identity Resolution
+    SalesforceInteractions.sendEvent({
+      user: { attributes: {
+        eventType : 'partyIdentification',
+        IDName    : 'Web ID',
+        IDType    : 'Loyalty Number',
+        userId    : loyalty
+      } }
+    });
+
+    known = { firstName, lastName, email, loyalty };
+    const chip = document.getElementById('signed-in-chip');
+    chip.textContent = '✓ ' + firstName + ' · ' + loyalty;
+    chip.style.display = 'inline-block';
+    document.getElementById('signin-btn').textContent = '👤 ' + firstName;
+
+    DataCloud._log('IDENTITY', { name: firstName }, 'ok', false);
+    DataCloud._log('CONTACT_POINT_EMAIL', { email }, 'ok', false);
+    DataCloud._log('PARTY_IDENTIFICATION', { name: loyalty }, 'ok', false);
+
+    close();
+    showToast('Signed in — profile linked in Data Cloud');
+  }
+
+  return { open, close, submit, get known() { return known; } };
+})();
+
+/* ══════════════════════════════════════════════
+   CART DRAWER + CHECKOUT
+   Checkout fires the standard Order interaction (Purchase),
+   then a ReplaceCart with an empty array to signal the cart
+   is now empty — both standard SDK interaction specs.
+   ══════════════════════════════════════════════ */
+const CartUI = (() => {
+  function open() {
+    render();
+    document.getElementById('cart-overlay').classList.add('open');
+  }
+  function close() { document.getElementById('cart-overlay').classList.remove('open'); }
+
+  function render() {
+    const cart = DataCloud.profile.cart;
+    const itemsEl = document.getElementById('cart-drawer-items');
+    const totalEl = document.getElementById('cart-drawer-total');
+    const btn = document.getElementById('checkout-btn');
+    if (!cart.length) {
+      itemsEl.innerHTML = '<div style="font-size:12px;color:#888780">Your cart is empty.</div>';
+      totalEl.style.display = 'none';
+      btn.disabled = true;
+      return;
+    }
+    const total = cart.reduce((s, p) => s + p.price, 0);
+    itemsEl.innerHTML = cart.map(p =>
+      '<div class="cart-drawer-item"><span class="ci-name">' + p.name + '</span><span class="ci-price">₹' + p.price.toLocaleString() + '</span></div>'
+    ).join('');
+    totalEl.style.display = 'flex';
+    totalEl.innerHTML = '<span>Total</span><span>₹' + total.toLocaleString() + '</span>';
+    btn.disabled = false;
+  }
+
+  function checkout() {
+    const cart = DataCloud.profile.cart;
+    if (!cart.length) return;
+    const orderId = 'ORD' + Date.now();
+    const total = cart.reduce((s, p) => s + p.price, 0);
+
+    // Standard Order Interaction -> Order / Order Item DMOs
+    SalesforceInteractions.sendEvent({
+      interaction: {
+        name: SalesforceInteractions.OrderInteractionName.Purchase,
+        order: {
+          id: orderId,
+          totalValue: total,
+          currency: 'INR',
+          lineItems: cart.map(p => ({
+            catalogObjectType: 'Product',
+            catalogObjectId: String(p.id),
+            quantity: 1,
+            price: p.price,
+            currency: 'INR',
+            attributes: { name: p.name, category: p.category, brand: p.brand }
+          }))
+        }
+      }
+    });
+    // Standard Cart Interaction -> signal the cart is now empty
+    SalesforceInteractions.sendEvent({
+      interaction: {
+        name: SalesforceInteractions.CartInteractionName.ReplaceCart,
+        lineItems: []
+      }
+    });
+
+    DataCloud._log('CHECKOUT', { name: orderId }, 'ok', false);
+    DataCloud.profile.cart = [];
+    document.getElementById('cart-badge').textContent = '0';
+    close();
+    showToast('Order placed — ' + orderId);
+    Personalization.refresh();
+  }
+
+  return { open, close, checkout };
 })();
 
 /* ══════════════════════════════════════════════
@@ -216,16 +481,14 @@ function showToast(msg) {
   _toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
 }
 
-// Boot
-renderProductGrid();
-Personalization.refresh();
+// Boot — called from SalesforceInteractions.init().then() once consent is recorded
+function boot() {
+  renderProductGrid();
+  Personalization.refresh();
 
-// Mark the status banner as connected (the real connection is now the beacon script)
-(function() {
-  const dot = document.getElementById('dc-dot');
-  const txt = document.getElementById('dc-status-text');
-  if (dot) dot.className = 'dc-dot connected';
-  if (txt) txt.textContent = 'Connected to Data Cloud';
-})();
-
-DataCloud.send('PAGE_VIEW', { pageName: 'SportZone Home' });
+  // Fire page view
+  DataCloud.send('PAGE_VIEW', {
+    pageUrl: window.location.href, pageName: 'SportZone Home',
+    pageType: 'home', objectType: 'Page'
+  });
+}
