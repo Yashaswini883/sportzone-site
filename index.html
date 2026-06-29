@@ -1,10 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>SF Intelligence Layer — SportZone India</title>
-<script src="https://cdn.c360a.salesforce.com/beacon/c360a/06f605fb-3c2e-4593-ac37-b18af57d01e8/scripts/c360a.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f4f0; color: #1a1a18; font-size: 14px; }
@@ -81,19 +81,81 @@
   .dc-dot { width: 7px; height: 7px; border-radius: 50%; background: #EF9F27; }
   .dc-dot.connected { background: #1D9E75; }
   .dc-dot.error { background: #E24B4A; }
+  .consent-btn { margin-left: 10px; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 12px; border: 1px solid #B5D4F4; background: #fff; color: #0C447C; cursor: pointer; }
+  .consent-btn.opted-out { border-color: #f1c4c3; color: #B23B3A; background: #FDF1F0; }
+  .header-actions { display: flex; align-items: center; gap: 14px; }
+  .header-actions button { background: none; border: none; color: #ccc; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+  .header-actions button:hover { color: #fff; }
+  .cart-badge { background: #185FA5; color: #fff; font-size: 10px; font-weight: 700; border-radius: 10px; padding: 1px 6px; min-width: 16px; text-align: center; }
+  .sf-overlay { position: fixed; inset: 0; background: rgba(20,20,18,0.45); z-index: 1001; display: none; align-items: center; justify-content: center; }
+  .sf-overlay.open { display: flex; }
+  .sf-modal { background: #fff; border-radius: 14px; width: 340px; max-width: 90vw; padding: 22px; box-shadow: 0 12px 40px rgba(0,0,0,0.2); }
+  .sf-modal h3 { font-size: 16px; margin-bottom: 4px; }
+  .sf-modal .sf-modal-sub { font-size: 12px; color: #888780; margin-bottom: 16px; }
+  .sf-modal label { font-size: 11px; font-weight: 600; color: #5f5e5a; display: block; margin: 10px 0 4px; }
+  .sf-modal input { width: 100%; padding: 8px 10px; font-size: 13px; border: 1px solid #d5d3cc; border-radius: 7px; outline: none; }
+  .sf-modal input:focus { border-color: #185FA5; }
+  .sf-modal-actions { display: flex; gap: 8px; margin-top: 18px; }
+  .sf-modal-actions button { flex: 1; padding: 9px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; }
+  .btn-primary { background: #185FA5; color: #fff; }
+  .btn-primary:hover { background: #0C447C; }
+  .btn-secondary { background: #f0efe9; color: #1a1a18; }
+  .cart-drawer-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eeecea; font-size: 13px; }
+  .cart-drawer-item .ci-name { font-weight: 500; }
+  .cart-drawer-item .ci-price { color: #185FA5; font-weight: 600; }
+  .cart-drawer-total { display: flex; justify-content: space-between; font-weight: 700; font-size: 14px; margin: 14px 0; }
+  .signed-in-chip { font-size: 11px; color: #9fe1cb; background: #233; padding: 3px 9px; border-radius: 10px; }
 </style>
+<!-- Salesforce Interactions Web SDK — connector: SportZone_Website -->
+<script src="https://cdn.c360a.salesforce.com/beacon/c360a/06f605fb-3c2e-4593-ac37-b18af57d01e8/scripts/c360a.min.js"></script>
 </head>
 <body>
 
 <div class="sdk-banner">
-  <strong>Live:</strong> Posting events to Data Cloud ingestion API
-  <span class="dc-status"><span class="dc-dot" id="dc-dot"></span><span id="dc-status-text">Connecting...</span></span>
+  <strong>Live:</strong> Powered by <code>Salesforce Interactions Web SDK</code> · Connector: <code>SportZone_Website</code>
+  <span class="dc-status"><span class="dc-dot" id="dc-dot"></span><span id="dc-status-text">Initializing SDK...</span></span>
+  <button class="consent-btn" id="consent-toggle" onclick="ConsentUI.toggle()">Tracking: Opt-In</button>
 </div>
 
 <header class="existing-site-header">
   <div class="logo">⚡ SportZone India</div>
-  <nav><a href="#">Shoes</a><a href="#">Wearables</a><a href="#">Gear</a><a href="#">Sale</a></nav>
+  <div class="header-actions">
+    <nav style="display:flex"><a href="#">Shoes</a><a href="#">Wearables</a><a href="#">Gear</a><a href="#">Sale</a></nav>
+    <span id="signed-in-chip" class="signed-in-chip" style="display:none"></span>
+    <button id="signin-btn" onclick="ShopperIdentity.open()">👤 Sign In</button>
+    <button onclick="CartUI.open()">🛒 Cart <span class="cart-badge" id="cart-badge">0</span></button>
+  </div>
 </header>
+
+<!-- Sign-in modal: fires Identity + Contact Point Email + Party Identification profile events -->
+<div class="sf-overlay" id="signin-overlay">
+  <div class="sf-modal">
+    <h3>Sign in to SportZone</h3>
+    <div class="sf-modal-sub">Fires an Identity, Contact Point Email, and Party Identification event — this is what lets Data Cloud's Identity Resolution stitch your anonymous browsing session to a known shopper profile.</div>
+    <label>First name</label><input id="si-first" type="text" placeholder="Yashaswini" />
+    <label>Last name</label><input id="si-last" type="text" placeholder="B R" />
+    <label>Email</label><input id="si-email" type="email" placeholder="you@example.com" />
+    <label>Loyalty / Customer ID</label><input id="si-loyalty" type="text" placeholder="auto-generated if blank" />
+    <div class="sf-modal-actions">
+      <button class="btn-secondary" onclick="ShopperIdentity.close()">Cancel</button>
+      <button class="btn-primary" onclick="ShopperIdentity.submit()">Sign In</button>
+    </div>
+  </div>
+</div>
+
+<!-- Cart drawer: fires the Purchase Order interaction on checkout -->
+<div class="sf-overlay" id="cart-overlay">
+  <div class="sf-modal">
+    <h3>Your Cart</h3>
+    <div class="sf-modal-sub">Checking out fires a standard <code>Purchase</code> Order interaction (with line items) followed by a <code>ReplaceCart</code> event to clear the cart — lands in the Order, Order Item, and Cart DMOs.</div>
+    <div id="cart-drawer-items"><div style="font-size:12px;color:#888780">Your cart is empty.</div></div>
+    <div class="cart-drawer-total" id="cart-drawer-total" style="display:none"></div>
+    <div class="sf-modal-actions">
+      <button class="btn-secondary" onclick="CartUI.close()">Keep Browsing</button>
+      <button class="btn-primary" id="checkout-btn" onclick="CartUI.checkout()" disabled>Place Order</button>
+    </div>
+  </div>
+</div>
 
 <div class="site-hero">
   <div>
