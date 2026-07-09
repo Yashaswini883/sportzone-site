@@ -243,9 +243,18 @@ const ShopperIdentity = (() => {
     if (!email) { alert('Email is required to sign in.'); return; }
 
     // 1. Identity profile event
-    SalesforceInteractions.sendEvent({
-      user: { attributes: { eventType: 'identity', firstName, lastName } }
-    });
+   SalesforceInteractions.sendEvent({
+  user: {
+    attributes: {
+      eventType: 'identity',
+      firstName: firstName,
+      lastName: lastName
+    }
+  },
+  interaction: {
+    name: 'Identity Update'
+  }
+});
     // 2. Contact Point Email profile event
     SalesforceInteractions.sendEvent({
       user: { attributes: { eventType: 'contactPointEmail', email } }
