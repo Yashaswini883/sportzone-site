@@ -1,9 +1,8 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
 <title>SF Intelligence Layer — SportZone India</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -37,35 +36,6 @@
   .sf-reco-card .name { font-size: 12px; font-weight: 600; margin-bottom: 2px; line-height: 1.3; }
   .sf-reco-card .price { font-size: 12px; color: #185FA5; font-weight: 500; }
   .sf-reco-card .reason { font-size: 10px; color: #5f5e5a; margin-top: 4px; line-height: 1.4; font-style: italic; }
-  #sf-agent-fab { position: fixed; bottom: 20px; right: 20px; z-index: 999; width: 52px; height: 52px; border-radius: 50%; background: #185FA5; color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 22px; transition: transform 0.15s, background 0.15s; box-shadow: 0 2px 10px rgba(24,95,165,0.3); }
-  #sf-agent-fab:hover { transform: scale(1.08); background: #0C447C; }
-  #sf-agent-panel { position: fixed; bottom: 82px; right: 20px; z-index: 998; width: 330px; background: #fff; border: 1px solid #d5d3cc; border-radius: 14px; display: none; flex-direction: column; max-height: 480px; overflow: hidden; }
-  #sf-agent-panel.open { display: flex; }
-  .agent-panel-header { padding: 14px 16px; border-bottom: 1px solid #eeecea; display: flex; align-items: center; justify-content: space-between; background: #fff; border-radius: 14px 14px 0 0; }
-  .agent-info { display: flex; align-items: center; gap: 10px; }
-  .agent-avatar { width: 32px; height: 32px; border-radius: 50%; background: #185FA5; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; }
-  .agent-name { font-size: 13px; font-weight: 600; color: #1a1a18; }
-  .agent-sub { font-size: 11px; color: #888780; }
-  .powered-by { font-size: 10px; color: #185FA5; font-weight: 500; letter-spacing: 0.04em; }
-  .agent-close { background: none; border: none; cursor: pointer; color: #888780; font-size: 18px; line-height: 1; padding: 0; }
-  .agent-close:hover { color: #1a1a18; }
-  .agent-messages { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; background: #f9f8f5; }
-  .msg { max-width: 86%; font-size: 13px; line-height: 1.5; padding: 8px 11px; border-radius: 10px; }
-  .msg-agent { background: #fff; color: #1a1a18; align-self: flex-start; border: 1px solid #eeecea; border-radius: 10px 10px 10px 2px; }
-  .msg-user { background: #185FA5; color: #fff; align-self: flex-end; border-radius: 10px 10px 2px 10px; }
-  .msg-typing { display: flex; gap: 4px; align-items: center; padding: 10px 12px; }
-  .msg-typing span { width: 6px; height: 6px; border-radius: 50%; background: #888780; animation: bounce 1.2s infinite; }
-  .msg-typing span:nth-child(2) { animation-delay: 0.2s; }
-  .msg-typing span:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
-  .quick-pills-row { display: flex; gap: 5px; flex-wrap: wrap; padding: 8px 14px; background: #f9f8f5; border-top: 1px solid #eeecea; }
-  .quick-pill { padding: 3px 9px; font-size: 11px; border: 1px solid #d5d3cc; border-radius: 12px; cursor: pointer; background: #fff; color: #5f5e5a; transition: all 0.12s; white-space: nowrap; }
-  .quick-pill:hover { border-color: #185FA5; color: #185FA5; }
-  .agent-input-row { display: flex; gap: 6px; padding: 10px 14px; border-top: 1px solid #eeecea; background: #fff; }
-  .agent-input { flex: 1; padding: 7px 10px; font-size: 13px; border: 1px solid #d5d3cc; border-radius: 8px; background: #fff; color: #1a1a18; outline: none; transition: border-color 0.15s; }
-  .agent-input:focus { border-color: #185FA5; }
-  .agent-send { padding: 7px 14px; font-size: 12px; font-weight: 600; background: #185FA5; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
-  .agent-send:hover { background: #0C447C; }
   #sf-event-log { position: fixed; bottom: 20px; left: 20px; z-index: 997; width: 290px; background: #1a1a18; border-radius: 10px; padding: 12px 14px; font-family: "SF Mono","Fira Code",monospace; font-size: 11px; color: #9fe1cb; max-height: 220px; overflow: hidden; }
   #sf-event-log .log-title { font-size: 10px; color: #5DCAA5; font-weight: 600; letter-spacing: 0.08em; margin-bottom: 8px; }
   .log-line { color: #9fe1cb; margin-bottom: 4px; line-height: 1.5; opacity: 0.9; }
@@ -170,32 +140,6 @@
   <div class="existing-product-grid" id="product-grid"></div>
 </div>
 
-<button id="sf-agent-fab" title="Open Shopper Agent" onclick="SFAgent.toggle()">💬</button>
-
-<div id="sf-agent-panel">
-  <div class="agent-panel-header">
-    <div class="agent-info">
-      <div class="agent-avatar">SF</div>
-      <div><div class="agent-name">Shopper Agent</div><div class="agent-sub">Agentforce · Data Cloud aware</div></div>
-    </div>
-    <div style="display:flex;align-items:center;gap:10px">
-      <span class="powered-by">DATA CLOUD</span>
-      <button class="agent-close" onclick="SFAgent.close()">✕</button>
-    </div>
-  </div>
-  <div class="agent-messages" id="agent-messages"></div>
-  <div class="quick-pills-row">
-    <button class="quick-pill" onclick="SFAgent.send('Running shoes under 8000')">Under ₹8k</button>
-    <button class="quick-pill" onclick="SFAgent.send('Best for marathon training')">Marathon</button>
-    <button class="quick-pill" onclick="SFAgent.send('Fitness tracking wearable')">Tracker</button>
-    <button class="quick-pill" onclick="SFAgent.send('What have I been browsing?')">My activity</button>
-  </div>
-  <div class="agent-input-row">
-    <input class="agent-input" id="agent-input" type="text" placeholder="Ask me anything..." onkeydown="if(event.key==='Enter') SFAgent.send()" />
-    <button class="agent-send" onclick="SFAgent.send()">Send</button>
-  </div>
-</div>
-
 <div id="sf-event-log">
   <div class="log-title">▸ DATA CLOUD EVENTS — LIVE</div>
   <div id="log-lines"></div>
@@ -203,6 +147,436 @@
 
 <div class="sf-toast" id="sf-toast"></div>
 
-<script src="app.js"></script>
+<script>
+/* ══════════════════════════════════════════════
+   NOTE ON CREDENTIALS
+   ══════════════════════════════════════════════
+   No client ID, client secret, or OAuth token belongs here. The
+   Salesforce Interactions Web SDK (loaded via the <script> tag in
+   <head>, scoped to connector "SportZone_Website") authenticates and
+   batches/delivers events on its own. There is no server-side proxy
+   to call either — that pattern (server.js + /api/token) is only
+   needed if you're using the raw Ingestion API, which this page no
+   longer does. */
+
+/* ══════════════════════════════════════════════
+   CONSENT
+   The Web SDK will not collect or send ANY data until it receives an
+   Opt In consent decision. We default this demo to Opt In so the
+   live event log has something to show, but the toggle in the banner
+   calls the real updateConsents() API so you can see opt-out behavior
+   too — flip it and watch the event log go quiet.
+   ══════════════════════════════════════════════ */
+const CONSENT_PROVIDER = 'SportZone_ConsentBanner';
+
+function buildConsent(optedIn) {
+  return [{
+    provider : CONSENT_PROVIDER,
+    purpose  : SalesforceInteractions.ConsentPurpose.Tracking,
+    status   : optedIn ? SalesforceInteractions.ConsentStatus.OptIn
+                        : SalesforceInteractions.ConsentStatus.OptOut
+  }];
+}
+
+const ConsentUI = (() => {
+  let optedIn = true;
+  function toggle() {
+    optedIn = !optedIn;
+    SalesforceInteractions.updateConsents(buildConsent(optedIn));
+    const btn = document.getElementById('consent-toggle');
+    btn.textContent = 'Tracking: ' + (optedIn ? 'Opt-In' : 'Opt-Out');
+    btn.classList.toggle('opted-out', !optedIn);
+  }
+  return { toggle };
+})();
+
+/* ══════════════════════════════════════════════
+   SDK STATUS + EVENT LIFECYCLE HOOKS
+   These are real SalesforceInteractions CustomEvents, not simulated —
+   they fire from inside the SDK itself.
+   ══════════════════════════════════════════════ */
+function _setStatus(ok, label) {
+  const dot = document.getElementById('dc-dot');
+  const txt = document.getElementById('dc-status-text');
+  if (dot) dot.className = 'dc-dot ' + (ok ? 'connected' : 'error');
+  if (txt) txt.textContent = label;
+}
+
+document.addEventListener('salesforce:OnInit', () => {
+  _setStatus(true, 'Connected — Web SDK initialized');
+});
+document.addEventListener('salesforce:OnError', (e) => {
+  console.error('SalesforceInteractions error:', e.detail);
+  _setStatus(false, 'SDK error — check console');
+});
+document.addEventListener('salesforce:OnConsentRevoke', () => {
+  _setStatus(true, 'Opted out — tracking paused');
+});
+
+/* ══════════════════════════════════════════════
+   INITIALIZE THE SDK
+   init() resolves once consent is recorded; only then is it safe to
+   call sendEvent(). We boot the rest of the page from inside .then().
+   ══════════════════════════════════════════════ */
+SalesforceInteractions.init({
+  consents: buildConsent(true)
+}).then(() => {
+  SalesforceInteractions.setLoggingLevel('debug'); // verbose console output for this demo; drop to 'error' or 'none' in production
+  boot();
+}).catch((err) => {
+  console.error('SalesforceInteractions.init failed:', err);
+  _setStatus(false, 'SDK failed to initialize');
+});
+
+/* ══════════════════════════════════════════════
+   PRODUCT CATALOG
+   ══════════════════════════════════════════════ */
+const CATALOG = [
+  {id:'P001', name:'Nike Air Zoom Pegasus',  price:8999,  category:'Running Shoes', brand:'Nike',       emoji:'👟'},
+  {id:'P002', name:'Adidas Ultraboost 22',   price:12499, category:'Running Shoes', brand:'Adidas',     emoji:'🏃'},
+  {id:'P003', name:'Saucony Ride 15',        price:7499,  category:'Running Shoes', brand:'Saucony',    emoji:'👟'},
+  {id:'P004', name:'Brooks Ghost 14',        price:9499,  category:'Running Shoes', brand:'Brooks',     emoji:'🏃'},
+  {id:'P005', name:'Garmin Forerunner 255',  price:24999, category:'Wearables',     brand:'Garmin',     emoji:'⌚'},
+  {id:'P006', name:'Apple Watch Series 9',   price:34999, category:'Wearables',     brand:'Apple',      emoji:'⌚'},
+  {id:'P007', name:'Fitbit Charge 6',        price:12999, category:'Wearables',     brand:'Fitbit',     emoji:'📟'},
+  {id:'P008', name:'Resistance Band Set',    price:1499,  category:'Fitness Gear',  brand:'Decathlon',  emoji:'💪'},
+  {id:'P009', name:'Foam Roller Pro',        price:2299,  category:'Fitness Gear',  brand:'Decathlon',  emoji:'🔵'},
+  {id:'P010', name:'Hydration Running Vest', price:3999,  category:'Fitness Gear',  brand:'Decathlon',  emoji:'🎽'},
+  {id:'P011', name:'New Balance Fresh Foam', price:8499,  category:'Casual Shoes',  brand:'New Balance',emoji:'👞'},
+  {id:'P012', name:'Adidas Stan Smith',      price:4999,  category:'Casual Shoes',  brand:'Adidas',     emoji:'👟'},
+];
+
+/* ══════════════════════════════════════════════
+   DATA CLOUD EVENT TRACKER
+   Routes each event to the correct DMO stream
+   ══════════════════════════════════════════════ */
+const DataCloud = (() => {
+  const profile = { categoryClicks:{}, browsedIds:[], cart:[] };
+  const MAX_LOG = 7;
+
+  function send(eventType, payload) {
+    _updateProfile(eventType, payload);
+    Personalization.refresh();
+
+    if (eventType === 'PRODUCT_VIEW' || eventType === 'PRODUCT_CLICK') {
+      SalesforceInteractions.sendEvent({
+        interaction: {
+          name: eventType === 'PRODUCT_CLICK'
+            ? SalesforceInteractions.CatalogObjectInteractionName.ViewCatalogObjectDetail
+            : SalesforceInteractions.CatalogObjectInteractionName.ViewCatalogObject,
+          catalogObject: {
+            id: String(payload.id || ''),
+            type: 'Product',
+            attributes: {
+              name: payload.name || '',
+              category: payload.category || '',
+              price: payload.price || 0,
+              brand: payload.brand || ''
+            }
+          }
+        }
+      });
+    }
+    else if (eventType === 'ADD_TO_CART' || eventType === 'REMOVE_FROM_CART') {
+      SalesforceInteractions.sendEvent({
+        interaction: {
+          name: eventType === 'ADD_TO_CART'
+            ? SalesforceInteractions.CartInteractionName.AddToCart
+            : SalesforceInteractions.CartInteractionName.RemoveFromCart,
+          lineItem: {
+            catalogObjectType: 'Product',
+            catalogObjectId: String(payload.id || ''),
+            quantity: 1,
+            price: payload.price || 0,
+            currency: 'INR',
+            attributes: {
+              name: payload.name || '',
+              category: payload.category || '',
+              brand: payload.brand || ''
+            }
+          }
+        }
+      });
+    }
+    else if (eventType === 'PAGE_VIEW') {
+      SalesforceInteractions.sendEvent({
+        interaction: {
+          name: 'View Page',
+          eventType: 'viewPage',
+          pageUrl: payload.pageUrl || window.location.href,
+          pageName: payload.pageName || 'SportZone Home',
+          pageType: payload.pageType || 'home',
+          referrerUrl: document.referrer || ''
+        }
+      });
+    }
+    else {
+      SalesforceInteractions.sendEvent({
+        interaction: {
+          name: 'Agent Query',
+          eventType: 'agentQuery',
+          message: payload.message || ''
+        }
+      });
+    }
+
+    _log(eventType, payload, 'ok', false);
+  }
+
+  function _updateProfile(eventType, payload) {
+    if (eventType === 'PRODUCT_VIEW' || eventType === 'PRODUCT_CLICK') {
+      profile.categoryClicks[payload.category] = (profile.categoryClicks[payload.category] || 0) + 1;
+      if (!profile.browsedIds.includes(payload.id)) profile.browsedIds.push(payload.id);
+    }
+    if (eventType === 'ADD_TO_CART') {
+      profile.categoryClicks[payload.category] = (profile.categoryClicks[payload.category] || 0) + 2;
+      if (!profile.cart.find(p => p.id === payload.id)) profile.cart.push(payload);
+    }
+    if (eventType === 'REMOVE_FROM_CART') {
+      profile.cart = profile.cart.filter(p => p.id !== payload.id);
+    }
+    if (eventType === 'ADD_TO_CART' || eventType === 'REMOVE_FROM_CART') {
+      const badge = document.getElementById('cart-badge');
+      if (badge) badge.textContent = profile.cart.length;
+    }
+  }
+
+  function _log(eventType, payload, status, replace) {
+    const el = document.getElementById('log-lines');
+    if (!el) return;
+    const label = payload.name || payload.category || payload.query || payload.message || payload.pageName || payload.email || '';
+    const s = status === 'ok'      ? '<span class="log-status-ok"> ✓</span>'
+            : status === 'err'     ? '<span class="log-status-err"> ✗</span>'
+            :                        '<span class="log-status-pending"> ⟳</span>';
+    if (replace && el.firstChild) {
+      const sp = el.firstChild.querySelector('.log-status-ok,.log-status-err,.log-status-pending');
+      if (sp) { sp.outerHTML = s; return; }
+    }
+    const line = document.createElement('div');
+    line.className = 'log-line';
+    line.innerHTML = '<span class="log-type">' + eventType + '</span> · ' + label + s;
+    el.insertBefore(line, el.firstChild);
+    while (el.children.length > MAX_LOG) el.removeChild(el.lastChild);
+  }
+
+  return { send, profile, _log };
+})();
+
+/* ══════════════════════════════════════════════
+   SHOPPER IDENTITY
+   ══════════════════════════════════════════════ */
+const ShopperIdentity = (() => {
+  let known = null;
+
+  function open()  { document.getElementById('signin-overlay').classList.add('open'); }
+  function close() { document.getElementById('signin-overlay').classList.remove('open'); }
+
+  function submit() {
+    const firstName = document.getElementById('si-first').value.trim() || 'Guest';
+    const lastName  = document.getElementById('si-last').value.trim();
+    const email     = document.getElementById('si-email').value.trim();
+    const loyalty   = document.getElementById('si-loyalty').value.trim() ||
+                       ('SZ' + Math.floor(Math.random() * 900000 + 100000));
+
+    if (!email) { alert('Email is required to sign in.'); return; }
+
+    SalesforceInteractions.sendEvent({
+      user: { attributes: { eventType: 'identity', firstName, lastName } }
+    });
+    SalesforceInteractions.sendEvent({
+      user: { attributes: { eventType: 'contactPointEmail', email } }
+    });
+    SalesforceInteractions.sendEvent({
+      user: { attributes: {
+        eventType : 'partyIdentification',
+        IDName    : 'Web ID',
+        IDType    : 'Loyalty Number',
+        userId    : loyalty
+      } }
+    });
+
+    known = { firstName, lastName, email, loyalty };
+    const chip = document.getElementById('signed-in-chip');
+    chip.textContent = '✓ ' + firstName + ' · ' + loyalty;
+    chip.style.display = 'inline-block';
+    document.getElementById('signin-btn').textContent = '👤 ' + firstName;
+
+    DataCloud._log('IDENTITY', { name: firstName }, 'ok', false);
+    DataCloud._log('CONTACT_POINT_EMAIL', { email }, 'ok', false);
+    DataCloud._log('PARTY_IDENTIFICATION', { name: loyalty }, 'ok', false);
+
+    close();
+    showToast('Signed in — profile linked in Data Cloud');
+  }
+
+  return { open, close, submit, get known() { return known; } };
+})();
+
+/* ══════════════════════════════════════════════
+   CART DRAWER + CHECKOUT
+   ══════════════════════════════════════════════ */
+const CartUI = (() => {
+  function open() {
+    render();
+    document.getElementById('cart-overlay').classList.add('open');
+  }
+  function close() { document.getElementById('cart-overlay').classList.remove('open'); }
+
+  function render() {
+    const cart = DataCloud.profile.cart;
+    const itemsEl = document.getElementById('cart-drawer-items');
+    const totalEl = document.getElementById('cart-drawer-total');
+    const btn = document.getElementById('checkout-btn');
+    if (!cart.length) {
+      itemsEl.innerHTML = '<div style="font-size:12px;color:#888780">Your cart is empty.</div>';
+      totalEl.style.display = 'none';
+      btn.disabled = true;
+      return;
+    }
+    const total = cart.reduce((s, p) => s + p.price, 0);
+    itemsEl.innerHTML = cart.map(p =>
+      '<div class="cart-drawer-item"><span class="ci-name">' + p.name + '</span><span class="ci-price">₹' + p.price.toLocaleString() + '</span></div>'
+    ).join('');
+    totalEl.style.display = 'flex';
+    totalEl.innerHTML = '<span>Total</span><span>₹' + total.toLocaleString() + '</span>';
+    btn.disabled = false;
+  }
+
+  function checkout() {
+    const cart = DataCloud.profile.cart;
+    if (!cart.length) return;
+    const orderId = 'ORD' + Date.now();
+    const total = cart.reduce((s, p) => s + p.price, 0);
+
+    SalesforceInteractions.sendEvent({
+      interaction: {
+        name: SalesforceInteractions.OrderInteractionName.Purchase,
+        order: {
+          id: orderId,
+          totalValue: total,
+          currency: 'INR',
+          lineItems: cart.map(p => ({
+            catalogObjectType: 'Product',
+            catalogObjectId: String(p.id),
+            quantity: 1,
+            price: p.price,
+            currency: 'INR',
+            attributes: { name: p.name, category: p.category, brand: p.brand }
+          }))
+        }
+      }
+    });
+    SalesforceInteractions.sendEvent({
+      interaction: {
+        name: SalesforceInteractions.CartInteractionName.ReplaceCart,
+        lineItems: []
+      }
+    });
+
+    DataCloud._log('CHECKOUT', { name: orderId }, 'ok', false);
+    DataCloud.profile.cart = [];
+    document.getElementById('cart-badge').textContent = '0';
+    close();
+    showToast('Order placed — ' + orderId);
+    Personalization.refresh();
+  }
+
+  return { open, close, checkout };
+})();
+
+/* ══════════════════════════════════════════════
+   PERSONALIZATION ENGINE
+   ══════════════════════════════════════════════ */
+const Personalization = (() => {
+  function getRecs() {
+    const { categoryClicks, browsedIds } = DataCloud.profile;
+    const topCats = Object.entries(categoryClicks).sort((a,b) => b[1]-a[1]).map(e => e[0]);
+    if (!topCats.length) return CATALOG.filter(p => p.category === 'Running Shoes').slice(0,4);
+    let pool = [];
+    for (const cat of topCats) pool = [...pool, ...CATALOG.filter(p => p.category === cat && !browsedIds.includes(p.id))];
+    if (pool.length < 4) pool = [...pool, ...CATALOG.filter(p => !pool.find(x => x.id === p.id))];
+    return pool.slice(0,4);
+  }
+  function reason(p) {
+    const n = DataCloud.profile.categoryClicks[p.category];
+    return n >= 3 ? 'Based on your ' + p.category + ' interest' : n >= 1 ? 'You browsed ' + p.category : 'Trending this week';
+  }
+  function refresh() {
+    const slot = document.getElementById('sf-reco-slot');
+    if (!slot) return;
+    const recs = getRecs();
+    const active = Object.keys(DataCloud.profile.categoryClicks).length > 0;
+    slot.innerHTML =
+      '<div class="sf-injected-label"><span class="badge">DATA CLOUD</span><span class="title">✦ Recommended for you</span>' +
+      '<span style="font-size:11px;color:#888780;margin-left:6px">' + (active ? '· from your activity' : '· trending picks') + '</span></div>' +
+      '<div class="sf-reco-strip">' + recs.map(p =>
+        '<div class="sf-reco-card" onclick="DataCloud.send(\'PRODUCT_CLICK\',{id:\'' + p.id + '\',name:\'' + p.name.replace(/'/g,"\\'") + '\',category:\'' + p.category + '\',price:' + p.price + ',brand:\'' + p.brand + '\'})">' +
+        '<span class="emoji">' + p.emoji + '</span><div class="name">' + p.name + '</div>' +
+        '<div class="price">₹' + p.price.toLocaleString() + '</div>' +
+        '<div class="reason">' + reason(p) + '</div></div>'
+      ).join('') + '</div>';
+  }
+  return { refresh };
+})();
+
+/* ══════════════════════════════════════════════
+   PRODUCT GRID + TOAST + BOOT
+   ══════════════════════════════════════════════ */
+function renderProductGrid() {
+  document.getElementById('product-grid').innerHTML = CATALOG.map(p =>
+    '<div class="existing-product-card" onclick="DataCloud.send(\'PRODUCT_VIEW\',{id:\'' + p.id + '\',name:\'' + p.name.replace(/'/g,"\\'") + '\',category:\'' + p.category + '\',price:' + p.price + ',brand:\'' + p.brand + '\'})">' +
+    '<span class="prod-emoji">' + p.emoji + '</span>' +
+    '<div class="prod-name">' + p.name + '</div>' +
+    '<div class="prod-cat">' + p.category + '</div>' +
+    '<div class="prod-price">₹' + p.price.toLocaleString() + '</div>' +
+    '<button class="btn-atc" onclick="event.stopPropagation();DataCloud.send(\'ADD_TO_CART\',{id:\'' + p.id + '\',name:\'' + p.name.replace(/'/g,"\\'") + '\',category:\'' + p.category + '\',price:' + p.price + ',brand:\'' + p.brand + '\'});showToast(\'Added to cart\')">+ Add to cart</button>' +
+    '</div>'
+  ).join('');
+}
+
+let _toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('sf-toast');
+  t.textContent = '⚡ ' + msg; t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// Boot — called from SalesforceInteractions.init().then() once consent is recorded
+function boot() {
+  renderProductGrid();
+  Personalization.refresh();
+
+  DataCloud.send('PAGE_VIEW', {
+    pageUrl: window.location.href, pageName: 'SportZone Home',
+    pageType: 'home', objectType: 'Page'
+  });
+}
+</script>
+
+<!-- ══════════════════════════════════════════════
+     SALESFORCE EMBEDDED MESSAGING — MY_TVS_Website_Chat
+     Agentforce Service Agent: MY TVS Service Assistant
+     ══════════════════════════════════════════════ -->
+<script type='text/javascript'>
+	function initEmbeddedMessaging() {
+		try {
+			embeddedservice_bootstrap.settings.language = 'en_US'; // For example, enter 'en' or 'en-US'
+
+			embeddedservice_bootstrap.init(
+				'00DHu000009Cnfy',
+				'MY_TVS_Website_Chat',
+				'https://ka1727761468637.my.site.com/ESWMYTVSWebsiteChat1789040240080',
+				{
+					scrt2URL: 'https://ka1727761468637.my.salesforce-scrt.com'
+				}
+			);
+		} catch (err) {
+			console.error('Error loading Embedded Messaging: ', err);
+		}
+	};
+</script>
+<script type='text/javascript' src='https://ka1727761468637.my.site.com/ESWMYTVSWebsiteChat1789040240080/assets/js/bootstrap.min.js' onload='initEmbeddedMessaging()'></script>
+
 </body>
 </html>
